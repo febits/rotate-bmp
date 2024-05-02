@@ -7,7 +7,7 @@ compile_commands.json
 build
 samples/sample
 .cache
-out
+out/samples/*.bmp
 
 ### C ###
 # Prerequisites
