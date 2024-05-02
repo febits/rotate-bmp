@@ -7,14 +7,15 @@
 #define _B_ 0x42
 #define _M_ 0x4d
 
-#define ROW_SIZE(bpp, imagew) (((((bpp) * (imagew) + 31) / 32) * 4))
-#define PADDING_SIZE(width) ((4 - ((width) * sizeof(pixel)) % 4) % 4)
+#define BYTES_PER_PIXEL 3
+#define ROW_SIZE(bpp, width) (((((bpp) * (width) + 31) / 32) * 4))
+#define PADDING_SIZE(width) ((4 - ((sizeof(pixel)) * (width)) % 4) % 4)
 
 enum bmp_parse_status { BMP_VALID, BMP_INVALID };
 
 typedef struct {
   u8 b, g, r;
-} pixel;
+} __attribute__((packed)) pixel;
 
 typedef struct {
   u8 b_magic[2];

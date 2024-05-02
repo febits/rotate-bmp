@@ -1,5 +1,8 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 
 #include "rotate.h"
 
@@ -9,6 +12,15 @@
 #define error(fmt, ...)                                                        \
   fprintf(stderr, fmt, ##__VA_ARGS__);                                         \
   exit(EXIT_FAILURE);
+
+void bmp_destroy(bmp_image *img) {
+  for (i32 i = 0; i < img->dib->b_width * img->dib->b_height; i++) {
+    free(img->pixelarr[i]);
+  }
+  free(img->pixelarr);
+}
+
+int bmp_rotate(bmp_image *img, bmp_image *new_img) { return 1; }
 
 enum bmp_parse_status bmp_parse(bmp_image *img) {
   if (fread(img->h, 1, sizeof(bmp_header), img->stream) != sizeof(bmp_header)) {
@@ -61,6 +73,46 @@ void bmp_print(bmp_image *img) {
   printf(PREFIX "Padding Size: %lu\n", PADDING_SIZE(img->dib->b_width));
 }
 
+int bmp_load_pixelarr(bmp_image *img) {
+  img->pixelarr =
+      calloc(img->dib->b_width * img->dib->b_height, sizeof(pixel *));
+
+  if (!img->pixelarr) {
+    return -1;
+  }
+
+  u32 row_size = ROW_SIZE(img->dib->b_bits_per_pixel, img->dib->b_width);
+  u32 padding = PADDING_SIZE(img->dib->b_width);
+
+  for (i32 i = 0; i < img->dib->b_height * img->dib->b_width; i++) {
+    img->pixelarr[i] = malloc(sizeof(pixel));
+
+    if (!img->pixelarr[i]) {
+      return -1;
+    }
+  }
+
+  fseek(img->stream, img->h->b_pixelarr_offset, SEEK_SET);
+
+  for (i32 i = 0, k = 0; i < img->dib->b_height; i++) {
+    for (u32 j = 0; j < row_size - padding; j += BYTES_PER_PIXEL, k++) {
+      fread(img->pixelarr[k], sizeof(u8), BYTES_PER_PIXEL, img->stream);
+    }
+    fseek(img->stream, padding, SEEK_CUR);
+  }
+
+  return 1;
+}
+
+static void print_pixels(bmp_image *img) {
+  printf("\n");
+  for (i32 i = 0; i < img->dib->b_width * img->dib->b_height; i++) {
+    printf("[%02X %02X %02X]\n", img->pixelarr[i]->r, img->pixelarr[i]->g,
+           img->pixelarr[i]->b);
+  }
+  printf("\n");
+}
+
 int main(int argc, char **argv) {
 
   if (argc != 2) {
@@ -69,7 +121,7 @@ int main(int argc, char **argv) {
 
   FILE *stream = fopen(argv[1], "rb");
 
-  if (stream == NULL) {
+  if (!stream) {
     error("rotate: file doesn't exist or permission denied\n");
   }
 
@@ -86,6 +138,29 @@ int main(int argc, char **argv) {
   bmp_print(&img);
 #endif
 
+  if (bmp_load_pixelarr(&img) == -1) {
+    error("rotate: error on load pixel array\n");
+  }
+
+  print_pixels(&img);
+
+  char buffer[strlen(argv[1]) + 6];
+  snprintf(buffer, strlen(argv[1]) + 5, "out/%s", argv[1]);
+
+  FILE *new_stream = fopen(buffer, "wb");
+
+  if (!new_stream) {
+    error("rotate: failed on fopen new stream\n");
+  }
+
+  bmp_image new_img = {buffer, new_stream, img.h, img.dib, NULL};
+
+  if (bmp_rotate(&img, &new_img) == -1) {
+    error("rotate: failed on rotate()\n");
+  }
+
   fclose(stream);
+  fclose(new_stream);
+  bmp_destroy(&img);
   return EXIT_SUCCESS;
 }
