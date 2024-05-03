@@ -48,4 +48,11 @@ typedef struct {
   pixel **pixelarr;
 } bmp_image;
 
+enum bmp_parse_status bmp_parse(bmp_image *img);
+int bmp_load_pixelarr(bmp_image *img);
+int bmp_rotate(bmp_image *img, bmp_image *new_img);
+int bmp_to_file(bmp_image *img);
+
+void bmp_destroy(bmp_image *img);
+
 #endif

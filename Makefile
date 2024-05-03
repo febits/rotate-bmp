@@ -11,7 +11,7 @@ BIN=rotate
 default: $(BIN)
 
 $(BIN): $(SRC)
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $^ -o $@
 
 clean:
 	rm -f $(BIN)
